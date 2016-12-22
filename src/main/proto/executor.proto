@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.buaa.lottery.executor";
+option java_outer_classname = "ExecutorProto";
+option objc_class_prefix = "E";
+
+package executor;
+
+// The executor service definition.
+service Executor {
+  
+  rpc query(QueryRequest) returns (StateReply){}
+  rpc verify(VerifyRequest) returns (BooleanReply){}
+  rpc newblock(BlockRequest) returns (BooleanReply){}
+}
+
+// The request message containing nothing.
+message QueryRequest {
+  string message = 1;
+}
+
+// The response message containing the State of the Executor
+message StateReply {
+  string state_root = 1;
+  int32 state_height = 2;
+  int32 state_tx = 3;
+}
+
+// The request message containing state_root, state_height, state_tx
+message VerifyRequest {
+  string state_root = 1;
+  int32 state_height = 2;
+  int32 state_tx = 3;
+}
+
+// The response message containing true/false
+message BooleanReply {
+  bool result = 1;
+}
+
+// The request message containing block
+message BlockRequest {
+  string block = 1;
+}
+
