@@ -127,32 +127,32 @@ public class ExecutorClient {
 		ExecutorClient client = new ExecutorClient("localhost", 50051);
 		Block block = new Block();
 		try {
-			// newblock
-			block.setPre_hash("pre_hash");
-			block.setMerkle_root("merkle_root");
-			block.setState_root("state_root");
-			block.setState_height(0);
-			block.setState_tx(0);
-			block.setHeight(0);
-			block.setSign("sign");
-			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-			String timestamp = sdf.format(new Date());
-			block.setTimestamp(timestamp);
-			block.setVersion("version");
-			block.setExtra("extra");
-			ArrayList<Transaction> transList = new ArrayList<Transaction>();
-			block.setTrans(transList);
-			block.setTx_length(transList.size());
-			Blockheader header = new Blockheader(block);
-			block.setHash(header.compute_hash());
-			block.setExtra("extra");
-			JSONObject jo = JSONObject.fromObject(block);
-
-			client.newblock(jo.toString());
+//			// newblock
+//			block.setPre_hash("pre_hash");
+//			block.setMerkle_root("merkle_root");
+//			block.setState_root("state_root");
+//			block.setState_height(0);
+//			block.setState_tx(0);
+//			block.setHeight(0);
+//			block.setSign("sign");
+//			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+//			String timestamp = sdf.format(new Date());
+//			block.setTimestamp(timestamp);
+//			block.setVersion("version");
+//			block.setExtra("extra");
+//			ArrayList<Transaction> transList = new ArrayList<Transaction>();
+//			block.setTrans(transList);
+//			block.setTx_length(transList.size());
+//			Blockheader header = new Blockheader(block);
+//			block.setHash(header.compute_hash());
+//			block.setExtra("extra");
+//			JSONObject jo = JSONObject.fromObject(block);
+//
+//			client.newblock(jo.toString());
 
 			client.query("");
 
-			client.verify("", 0, 0);
+//			client.verify("", 0, 0);
 
 		} finally {
 			client.shutdown();

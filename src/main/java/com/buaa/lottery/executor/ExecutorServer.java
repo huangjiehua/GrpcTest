@@ -57,7 +57,7 @@ public class ExecutorServer {
 				System.err.println("*** server shut down");
 			}
 		});
-		if(state_root == "" && state_height == 0 && state_tx == 0) {
+		if (state_root == "" && state_height == 0 && state_tx == 0) {
 			TrieImpl trie = new TrieImpl(levelDb);
 			TrieImpl newtrie = new TrieImpl(levelDb);
 			Values val = new Values(newtrie.getRoot());
@@ -90,6 +90,9 @@ public class ExecutorServer {
 			levelDb.put("state_tx".getBytes(), String.valueOf(0).getBytes());
 			levelDb.put("state_latest".getBytes(), String.valueOf(0).getBytes());
 			levelDb.put("blocktrans:0".getBytes(), "".getBytes());
+			jo = new JSONObject();
+			jo.put("root", state_root);
+			jo.put("result", "firstblock");
 			levelDb.put("block:0 tran:0".getBytes(), jo.toJSONString().getBytes());
 
 		}
@@ -99,6 +102,20 @@ public class ExecutorServer {
 	/** Stop serving requests and shutdown resources. */
 	public void stop() {
 		if (server != null) {
+			levelDb.put("state_root".getBytes(), Utils.hexStringToBytes(state_root));
+			levelDb.put("state_height".getBytes(), String.valueOf(state_height).getBytes());
+			levelDb.put("state_tx".getBytes(), String.valueOf(state_tx).getBytes());
+			levelDb.put("state_latest".getBytes(), String.valueOf(state_latest).getBytes());
+			logger.info("state_root:" + state_root + " state_height:" + String.valueOf(state_height) + " state_tx:"
+					+ String.valueOf(state_tx) + " state_latest:" + String.valueOf(state_latest));
+			levelDb.close();
+			levelDb.put("state_root".getBytes(), Utils.hexStringToBytes(state_root));
+			levelDb.put("state_height".getBytes(), String.valueOf(state_height).getBytes());
+			levelDb.put("state_tx".getBytes(), String.valueOf(state_tx).getBytes());
+			levelDb.put("state_latest".getBytes(), String.valueOf(state_latest).getBytes());
+			logger.info("state_root:" + state_root + " state_height:" + String.valueOf(state_height) + " state_tx:"
+					+ String.valueOf(state_tx) + " state_latest:" + String.valueOf(state_latest));
+			levelDb.close();
 			server.shutdown();
 		}
 	}
@@ -109,6 +126,20 @@ public class ExecutorServer {
 	 */
 	private void blockUntilShutdown() throws InterruptedException {
 		if (server != null) {
+			levelDb.put("state_root".getBytes(), Utils.hexStringToBytes(state_root));
+			levelDb.put("state_height".getBytes(), String.valueOf(state_height).getBytes());
+			levelDb.put("state_tx".getBytes(), String.valueOf(state_tx).getBytes());
+			levelDb.put("state_latest".getBytes(), String.valueOf(state_latest).getBytes());
+			logger.info("state_root:" + state_root + " state_height:" + String.valueOf(state_height) + " state_tx:"
+					+ String.valueOf(state_tx) + " state_latest:" + String.valueOf(state_latest));
+			levelDb.close();
+			levelDb.put("state_root".getBytes(), Utils.hexStringToBytes(state_root));
+			levelDb.put("state_height".getBytes(), String.valueOf(state_height).getBytes());
+			levelDb.put("state_tx".getBytes(), String.valueOf(state_tx).getBytes());
+			levelDb.put("state_latest".getBytes(), String.valueOf(state_latest).getBytes());
+			logger.info("state_root:" + state_root + " state_height:" + String.valueOf(state_height) + " state_tx:"
+					+ String.valueOf(state_tx) + " state_latest:" + String.valueOf(state_latest));
+			levelDb.close();
 			server.awaitTermination();
 		}
 	}
@@ -200,15 +231,18 @@ public class ExecutorServer {
 			JSON json = JSON.parseObject(request.getBlock());
 			Block block = JSONObject.toJavaObject(json, Block.class);
 			int height = block.getHeight();
-			byte[] key = storeName(height).getBytes();
-			List<Transaction> txs = block.getTrans();
-			if (txs != null) {
-				String transactionlist = JSONObject.toJSONString(txs);
-				// 将每个块中的交易存储起来，key为"blocktrans:i"
-				levelDb.put(key, transactionlist.getBytes());
-			} else
-				levelDb.put(key, "".getBytes());
-			state_latest = height;
+			if (height > state_latest) {
+				byte[] key = storeName(height).getBytes();
+				List<Transaction> txs = block.getTrans();
+				if (txs != null) {
+					String transactionlist = JSONObject.toJSONString(txs);
+					// 将每个块中的交易存储起来，key为"blocktrans:i"
+					levelDb.put(key, transactionlist.getBytes());
+				} else
+					levelDb.put(key, "".getBytes());
+				state_latest = height;
+			}
+
 			return BooleanReply.newBuilder().setResult(true).build();
 		}
 
@@ -221,7 +255,6 @@ public class ExecutorServer {
 	private static String result(int blocknumber, int tx) {
 		return "block:" + String.valueOf(blocknumber) + " tran:" + String.valueOf(tx);
 	}
-
 
 	public void computestart() {
 		int height;
@@ -238,9 +271,8 @@ public class ExecutorServer {
 					key = storeName(state_height).getBytes();
 					value = levelDb.get(key);
 					transactionlist = new String(value);
-					if (!transactionlist.equals(""))
+					if (!transactionlist.equals("")) {
 						txs = JSON.parseArray(transactionlist, Transaction.class);
-					if (state_height > 0) {
 						while (state_tx < txs.size() - 1) {
 							re = exec(levelDb, txs.get(state_tx + 1));
 							JSONObject jo = JSONObject.parseObject(re);
@@ -256,6 +288,7 @@ public class ExecutorServer {
 					state_tx = -1;
 					result_name = result(state_height, state_tx);
 					levelDb.put(result_name.getBytes(), re.getBytes());
+
 				}
 				Thread.sleep(10000);
 
