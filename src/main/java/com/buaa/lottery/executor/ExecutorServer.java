@@ -14,8 +14,11 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.buaa.lottery.bean.Block;
 import com.buaa.lottery.bean.Transaction;
+import com.buaa.lottery.bean.State;
 import com.buaa.lottery.datasource.LevelDbDataSource;
 import com.buaa.lottery.executor.ExecutorServer;
+import com.buaa.lottery.routeguide.Feature;
+import com.buaa.lottery.routeguide.Point;
 import com.buaa.lottery.transaction.Compute;
 import com.buaa.lottery.trie.TrieImpl;
 import com.buaa.lottery.util.Utils;
@@ -31,17 +34,17 @@ public class ExecutorServer {
 
 	private Server server;
 
-	public LevelDbDataSource levelDb = new LevelDbDataSource("triedb");
-	private String state_root;
-	private int state_height;
-	private int state_tx; // count from 0
+	public static LevelDbDataSource levelDb = new LevelDbDataSource("triedb");
+	private static String state_root;
+	private static int state_height;
+	private static int state_tx; // count from 0
 	private Integer state_latest;
 
 	/** Start serving requests. */
 	public void start() throws IOException {
 		/* The port on which the server should run */
 		int port = 50051;
-		server = ServerBuilder.forPort(port).addService(new ExecutorImpl()).build().start();
+		server = ServerBuilder.forPort(port).addService(new ExecutorService()).build().start();
 		logger.info("Server started, listening on " + port);
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			@Override
@@ -90,70 +93,112 @@ public class ExecutorServer {
 	private static class ExecutorService extends ExecutorGrpc.ExecutorImplBase {
 		/**
 		 */
-		public void query(com.buaa.lottery.executor.QueryRequest request,
-				io.grpc.stub.StreamObserver<com.buaa.lottery.executor.StateReply> responseObserver) {
-			asyncUnimplementedUnaryCall(query, responseObserver);
+		public void query(QueryRequest request, io.grpc.stub.StreamObserver<StateReply> responseObserver) {
+			responseObserver.onNext(querystate(request));
+			responseObserver.onCompleted();
+		}
+
+		private StateReply querystate(QueryRequest request) {
+			return StateReply.newBuilder().setStateRoot(state_root).setStateHeight(state_height).setStateTx(state_tx)
+					.build();
 		}
 
 		/**
 		 */
-		public void verify(com.buaa.lottery.executor.VerifyRequest request,
-				io.grpc.stub.StreamObserver<com.buaa.lottery.executor.BooleanReply> responseObserver) {
-			asyncUnimplementedUnaryCall(verify, responseObserver);
+		public void verify(VerifyRequest request, io.grpc.stub.StreamObserver<BooleanReply> responseObserver) {
+			responseObserver.onNext(verifystate(request));
+			responseObserver.onCompleted();
+		}
+
+		private BooleanReply verifystate(VerifyRequest request) {
+			int _state_height = request.getStateHeight();
+			int _state_tx = request.getStateTx();
+			String _state_root = request.getStateRoot();
+			String str = result(_state_height, _state_tx);
+			byte[] ja = levelDb.get(str.getBytes());
+			if (ja != null) {
+				JSONObject jo = JSONObject.parseObject(new String(ja));
+				String root = jo.getString("root");
+				System.out.println(
+						"height:" + String.valueOf(state_height) + " tx:" + String.valueOf(state_tx) + " root:" + root);
+				if (root.equals(_state_root))
+					return BooleanReply.newBuilder().setResult(true).build();
+			}
+			return BooleanReply.newBuilder().setResult(false).build();
 		}
 
 		/**
 		 */
-		public void newblock(com.buaa.lottery.executor.BlockRequest request,
-				io.grpc.stub.StreamObserver<com.buaa.lottery.executor.BooleanReply> responseObserver) {
-			asyncUnimplementedUnaryCall(newblock, responseObserver);
+		public void newblock(BlockRequest request, io.grpc.stub.StreamObserver<BooleanReply> responseObserver) {
+			responseObserver.onNext(recordeblock(request));
+			responseObserver.onCompleted();
+		}
+
+		private BooleanReply recordeblock(BlockRequest request) {
+
+			int height = block.getHeight();
+			byte[] key = storeName(height).getBytes();
+			List<Transaction> txs = block.getTrans();
+			if (txs != null) {
+				String transactionlist = JSONObject.toJSONString(txs);
+				// 将每个块中的交易存储起来，key为"blocktrans:i"
+				levelDb.put(key, transactionlist.getBytes());
+			} else
+				levelDb.put(key, "".getBytes());
+			state_latest = height;
+			// synchronized(state_latest){
+			// state_latest.notify();
+			// }
 		}
 
 	}
-	
+
 	private String storeName(int blocknumber) {
 		return "blocktrans:" + String.valueOf(blocknumber);
 	}
 
-	private String result(int blocknumber, int tx) {
+	private static String result(int blocknumber, int tx) {
 		return "block:" + String.valueOf(blocknumber) + " tran:" + String.valueOf(tx);
 	}
 
-	private State query() {
-		// TODO Auto-generated method stub
-		State state = new State(state_root, state_height, state_tx);
-		return state;
-	}
+	// private State query() {
+	// // TODO Auto-generated method stub
+	// State state = new State(state_root, state_height, state_tx);
+	// return state;
+	// }
 
-	public boolean verify(String _state_root, int _state_height, int _state_tx) {
-		// TODO Auto-generated method stub
-		String str = result(_state_height, _state_tx);
-		byte[] ja = levelDb.get(str.getBytes());
-		if (ja != null) {
-			JSONObject jo = JSONObject.parseObject(new String(ja));
-			String root = jo.getString("root");
-			System.out.println("height:"+String.valueOf(state_height)+" tx:"+String.valueOf(state_tx)+" root:"+root);
-			if (root.equals(_state_root))
-				return true;
-		}
-		return false;
-	}
+	// public boolean verify(String _state_root, int _state_height, int
+	// _state_tx) {
+	// // TODO Auto-generated method stub
+	// String str = result(_state_height, _state_tx);
+	// byte[] ja = levelDb.get(str.getBytes());
+	// if (ja != null) {
+	// JSONObject jo = JSONObject.parseObject(new String(ja));
+	// String root = jo.getString("root");
+	// System.out.println(
+	// "height:" + String.valueOf(state_height) + " tx:" +
+	// String.valueOf(state_tx) + " root:" + root);
+	// if (root.equals(_state_root))
+	// return true;
+	// }
+	// return false;
+	// }
 
-	public void newblock(Block block) {
-		int height = block.getHeight();
-		byte[] key = storeName(height).getBytes();
-		List<Transaction> txs = block.getTrans();
-		if (txs != null) {
-			String transactionlist = JSONObject.toJSONString(txs);
-			// 将每个块中的交易存储起来，key为"blocktrans:i"
-			levelDb.put(key, transactionlist.getBytes());
-		} else
-			levelDb.put(key, "".getBytes());
-		state_latest = height;
-//		synchronized(state_latest){
-//			state_latest.notify();
-//		}
-	}
+	// public void newblock(Block block) {
+	// int height = block.getHeight();
+	// byte[] key = storeName(height).getBytes();
+	// List<Transaction> txs = block.getTrans();
+	// if (txs != null) {
+	// String transactionlist = JSONObject.toJSONString(txs);
+	// // 将每个块中的交易存储起来，key为"blocktrans:i"
+	// levelDb.put(key, transactionlist.getBytes());
+	// } else
+	// levelDb.put(key, "".getBytes());
+	// state_latest = height;
+	// // synchronized(state_latest){
+	// // state_latest.notify();
+	// // }
+	// }
 
 	public void run() {
 		int height;
@@ -165,13 +210,13 @@ public class ExecutorServer {
 		List<Transaction> txs = null;
 		try {
 			while (true) {
-//				synchronized(state_latest) {
-//					if(state_height>state_latest||state_height==0) {
-//						state_latest.wait();
-//					}
-//				}
+				// synchronized(state_latest) {
+				// if(state_height>state_latest||state_height==0) {
+				// state_latest.wait();
+				// }
+				// }
 				while (state_height <= state_latest && state_latest > 0) {
-//					System.out.println("----------------hello world");
+					// System.out.println("----------------hello world");
 					key = storeName(state_height).getBytes();
 					value = levelDb.get(key);
 					transactionlist = new String(value);
@@ -185,9 +230,9 @@ public class ExecutorServer {
 							state_tx = state_tx + 1;
 							result_name = result(state_height, state_tx);
 							levelDb.put(result_name.getBytes(), re.getBytes());
-							log.info(result_name + " result:" + re);
+							logger.info(result_name + " result:" + re);
 						}
-						
+
 					}
 					state_height = state_height + 1;
 					state_tx = -1;
@@ -195,7 +240,7 @@ public class ExecutorServer {
 					levelDb.put(result_name.getBytes(), re.getBytes());
 				}
 				Thread.sleep(10000);
-				
+
 			}
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -205,7 +250,7 @@ public class ExecutorServer {
 			levelDb.put("state_height".getBytes(), String.valueOf(state_height).getBytes());
 			levelDb.put("state_tx".getBytes(), String.valueOf(state_tx).getBytes());
 			levelDb.put("state_latest".getBytes(), String.valueOf(state_latest).getBytes());
-			log.info("state_root:" + state_root + " state_height:" + String.valueOf(state_height) + " state_tx:"
+			logger.info("state_root:" + state_root + " state_height:" + String.valueOf(state_height) + " state_tx:"
 					+ String.valueOf(state_tx) + " state_latest:" + String.valueOf(state_latest));
 			levelDb.close();
 		}

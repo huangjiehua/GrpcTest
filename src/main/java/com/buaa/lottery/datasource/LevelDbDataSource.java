@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.spongycastle.util.encoders.Hex;
 
 
-import com.buaa.lottery.util.SystemConfig;
 import com.typesafe.config.Config;
 //import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.context.annotation.Scope;
@@ -37,7 +36,7 @@ public class LevelDbDataSource implements KeyValueDataSource {
 //  @Autowired
   //SystemProperties config  = SystemProperties.CONFIG; // initialized for standalone test
 
-  public SystemConfig config; 
+
 
   String name;
   public DB db;
