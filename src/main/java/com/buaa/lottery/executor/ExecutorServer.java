@@ -38,7 +38,7 @@ public class ExecutorServer {
 	private static String state_root;
 	private static int state_height;
 	private static int state_tx; // count from 0
-	private Integer state_latest;
+	private static Integer state_latest;
 
 	/** Start serving requests. */
 	public void start() throws IOException {
@@ -56,6 +56,7 @@ public class ExecutorServer {
 				System.err.println("*** server shut down");
 			}
 		});
+		computestart();
 	}
 
 	/** Stop serving requests and shutdown resources. */
@@ -79,6 +80,30 @@ public class ExecutorServer {
 	 * Main method. This comment makes the linter happy.
 	 */
 	public static void main(String[] args) throws Exception {
+		levelDb.init();
+		byte[] str = levelDb.get("state_root".getBytes());
+		if (str == null)
+			state_root = "";
+		else
+			state_root = Utils.bytesToHexString(str);
+		str = levelDb.get("state_height".getBytes());
+		if (str == null)
+			state_height = 0;
+		else {
+			state_height = Integer.valueOf(new String(str));
+		}
+		str = levelDb.get("state_tx".getBytes());
+		if (str == null)
+			state_tx = 0;
+		else
+			state_tx = Integer.valueOf(new String(str));
+		str = levelDb.get("state_latest".getBytes());
+		if (str == null)
+			state_latest = 0;
+		else
+			state_latest = Integer.valueOf(new String(str));
+		if (state_height == 0)
+			levelDb.put("blocktrans:0".getBytes(), "".getBytes());
 		ExecutorServer server = new ExecutorServer();
 		server.start();
 		server.blockUntilShutdown();
@@ -135,7 +160,8 @@ public class ExecutorServer {
 		}
 
 		private BooleanReply recordeblock(BlockRequest request) {
-
+			JSON json = JSON.parseObject(request.getBlock());
+			Block block = JSONObject.toJavaObject(json, Block.class);
 			int height = block.getHeight();
 			byte[] key = storeName(height).getBytes();
 			List<Transaction> txs = block.getTrans();
@@ -146,14 +172,12 @@ public class ExecutorServer {
 			} else
 				levelDb.put(key, "".getBytes());
 			state_latest = height;
-			// synchronized(state_latest){
-			// state_latest.notify();
-			// }
+			return BooleanReply.newBuilder().setResult(true).build();
 		}
 
 	}
 
-	private String storeName(int blocknumber) {
+	private static String storeName(int blocknumber) {
 		return "blocktrans:" + String.valueOf(blocknumber);
 	}
 
@@ -161,46 +185,8 @@ public class ExecutorServer {
 		return "block:" + String.valueOf(blocknumber) + " tran:" + String.valueOf(tx);
 	}
 
-	// private State query() {
-	// // TODO Auto-generated method stub
-	// State state = new State(state_root, state_height, state_tx);
-	// return state;
-	// }
 
-	// public boolean verify(String _state_root, int _state_height, int
-	// _state_tx) {
-	// // TODO Auto-generated method stub
-	// String str = result(_state_height, _state_tx);
-	// byte[] ja = levelDb.get(str.getBytes());
-	// if (ja != null) {
-	// JSONObject jo = JSONObject.parseObject(new String(ja));
-	// String root = jo.getString("root");
-	// System.out.println(
-	// "height:" + String.valueOf(state_height) + " tx:" +
-	// String.valueOf(state_tx) + " root:" + root);
-	// if (root.equals(_state_root))
-	// return true;
-	// }
-	// return false;
-	// }
-
-	// public void newblock(Block block) {
-	// int height = block.getHeight();
-	// byte[] key = storeName(height).getBytes();
-	// List<Transaction> txs = block.getTrans();
-	// if (txs != null) {
-	// String transactionlist = JSONObject.toJSONString(txs);
-	// // 将每个块中的交易存储起来，key为"blocktrans:i"
-	// levelDb.put(key, transactionlist.getBytes());
-	// } else
-	// levelDb.put(key, "".getBytes());
-	// state_latest = height;
-	// // synchronized(state_latest){
-	// // state_latest.notify();
-	// // }
-	// }
-
-	public void run() {
+	public void computestart() {
 		int height;
 		byte[] key;
 		byte[] value;
@@ -210,11 +196,6 @@ public class ExecutorServer {
 		List<Transaction> txs = null;
 		try {
 			while (true) {
-				// synchronized(state_latest) {
-				// if(state_height>state_latest||state_height==0) {
-				// state_latest.wait();
-				// }
-				// }
 				while (state_height <= state_latest && state_latest > 0) {
 					// System.out.println("----------------hello world");
 					key = storeName(state_height).getBytes();
