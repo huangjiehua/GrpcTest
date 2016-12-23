@@ -20,6 +20,7 @@ import com.buaa.lottery.executor.ExecutorServer;
 import com.buaa.lottery.routeguide.Feature;
 import com.buaa.lottery.routeguide.Point;
 import com.buaa.lottery.transaction.Compute;
+import com.buaa.lottery.trie.DmgTrieImpl;
 import com.buaa.lottery.trie.TrieImpl;
 import com.buaa.lottery.util.Utils;
 import com.buaa.lottery.util.Values;
@@ -56,6 +57,42 @@ public class ExecutorServer {
 				System.err.println("*** server shut down");
 			}
 		});
+		if(state_root == "" && state_height == 0 && state_tx == 0) {
+			TrieImpl trie = new TrieImpl(levelDb);
+			TrieImpl newtrie = new TrieImpl(levelDb);
+			Values val = new Values(newtrie.getRoot());
+			// NewTable OrderInsert transaction
+			JSONObject jo = new JSONObject();
+			jo.put("id", "60000000000000010000000000000000");
+			jo.put("name", "OrderInsert");
+			jo.put("root", Utils.bytesToHexString(val.encode()));
+			DmgTrieImpl.update32(trie, jo.getString("id"), jo.toString());
+
+			// NewTable Charge transaction
+			jo = new JSONObject();
+			jo.put("id", "60000000000000020000000000000000");
+			jo.put("name", "Charge");
+			jo.put("root", Utils.bytesToHexString(val.encode()));
+			DmgTrieImpl.update32(trie, jo.getString("id"), jo.toString());
+
+			// NewTable WithdrawInsert transaction
+			jo = new JSONObject();
+			jo.put("id", "60000000000000030000000000000000");
+			jo.put("name", "WithdrawInsert");
+			jo.put("root", Utils.bytesToHexString(val.encode()));
+			DmgTrieImpl.update32(trie, jo.getString("id"), jo.toString());
+
+			trie.sync();
+			// levelDb.close();
+			state_root = Utils.bytesToHexString(trie.getRootHash());
+			levelDb.put("state_root".getBytes(), Utils.hexStringToBytes(state_root));
+			levelDb.put("state_height".getBytes(), String.valueOf(0).getBytes());
+			levelDb.put("state_tx".getBytes(), String.valueOf(0).getBytes());
+			levelDb.put("state_latest".getBytes(), String.valueOf(0).getBytes());
+			levelDb.put("blocktrans:0".getBytes(), "".getBytes());
+			levelDb.put("block:0 tran:0".getBytes(), jo.toJSONString().getBytes());
+
+		}
 		computestart();
 	}
 
