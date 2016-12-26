@@ -42,7 +42,7 @@ public class Compute {
 		JSONObject jo = JSONObject.fromObject(tx);
 		Map<String, String> map = new HashMap<String, String>();
 		String result = "";
-		ComputeClient client = new ComputeClient("localhost", 50052);
+
 //		log.info("transaction: "+jo.toString());
 		try {
 			map.put("method", jo.getString("method"));
@@ -54,6 +54,7 @@ public class Compute {
 		switch (map.get("method")) {
 		case "Mount": {
 			result = "";
+			ComputeClient client = new ComputeClient("localhost", 50052);
 			try {
 				result = client.compute(tx);
 
@@ -69,6 +70,7 @@ public class Compute {
 		}
 		case "Purchase": {
 			result = "";
+			ComputeClient client = new ComputeClient("localhost", 50052);
 			try {
 				result = client.compute(tx);
 
