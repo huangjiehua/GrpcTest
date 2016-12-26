@@ -13,6 +13,7 @@ service Executor {
   rpc query(QueryRequest) returns (StateReply){}
   rpc verify(VerifyRequest) returns (BooleanReply){}
   rpc newblock(BlockRequest) returns (BooleanReply){}
+  rpc querytrie(QueryTrieRequest) returns (TrieReply) {}
 }
 
 // The request message containing nothing.
@@ -42,5 +43,14 @@ message BooleanReply {
 // The request message containing block
 message BlockRequest {
   string block = 1;
+}
+
+message QueryTrieRequest {
+  string triekey = 1;
+  string fieldkey = 2;
+}
+
+message TrieReply {
+  string reply = 1;
 }
 

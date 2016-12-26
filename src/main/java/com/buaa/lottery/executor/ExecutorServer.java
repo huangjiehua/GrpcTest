@@ -245,8 +245,21 @@ public class ExecutorServer {
 
 			return BooleanReply.newBuilder().setResult(true).build();
 		}
+		
+	    /**
+	     */
+	    public void querytrie(QueryTrieRequest request,
+	        io.grpc.stub.StreamObserver<com.buaa.lottery.executor.TrieReply> responseObserver) {
+			byte[] root = levelDb.get(Utils.hexStringToBytes(state_root));
+			Values val = Values.fromRlpEncoded(root);
+			TrieImpl trie = new TrieImpl(levelDb, val.asObj());
+			String rlpdata = DmgTrieImpl.get32(trie, request.getTriekey(), request.getFieldkey());
+			responseObserver.onNext(TrieReply.newBuilder().setReply(rlpdata).build());
+			responseObserver.onCompleted();
+	    }
 
 	}
+	
 
 	private static String storeName(int blocknumber) {
 		return "blocktrans:" + String.valueOf(blocknumber);
@@ -278,16 +291,18 @@ public class ExecutorServer {
 							JSONObject jo = JSONObject.parseObject(re);
 							state_root = jo.getString("root");
 							state_tx = state_tx + 1;
-							result_name = result(state_height, state_tx);
-							levelDb.put(result_name.getBytes(), re.getBytes());
-							logger.info(result_name + " result:" + re);
-						}
 
+						}
+						state_height = state_height + 1;
+						state_tx = -1;
+						result_name = result(state_height, state_tx);
+						levelDb.put(result_name.getBytes(), re.getBytes());
+					} else {
+						state_height = state_height + 1;
+						state_tx = -1;
+						result_name = result(state_height, state_tx);
+						levelDb.put(result_name.getBytes(), "".getBytes());
 					}
-					state_height = state_height + 1;
-					state_tx = -1;
-					result_name = result(state_height, state_tx);
-					levelDb.put(result_name.getBytes(), re.getBytes());
 
 				}
 				Thread.sleep(10000);

@@ -13,4 +13,7 @@ public class State {
 		state_height = _state_height;
 		state_tx = _state_tx;
 	}
+	public State() {
+		// TODO Auto-generated constructor stub
+	}
 }

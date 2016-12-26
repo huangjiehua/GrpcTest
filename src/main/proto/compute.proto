@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.buaa.lottery.compute";
+option java_outer_classname = "ComputeProto";
+option objc_class_prefix = "C";
+
+package compute;
+
+// The executor service definition.
+service Compute {
+  
+  rpc compute(ComputeRequest) returns (ResultReply) {}
+}
+
+// The request message containing nothing.
+message ComputeRequest {
+  string transaction = 1;
+}
+
+// The response message containing the State of the Executor
+message ResultReply {
+  bool result = 1;
+  string delta = 2;
+}
+

@@ -12,7 +12,9 @@ import org.slf4j.LoggerFactory;
 import lombok.extern.slf4j.Slf4j;
 
 import com.buaa.lottery.bean.Transaction;
+import com.buaa.lottery.compute.ComputeClient;
 import com.buaa.lottery.datasource.LevelDbDataSource;
+import com.buaa.lottery.executor.ExecutorClient;
 import com.buaa.lottery.trie.CollectFullSetOfLeafNode;
 import com.buaa.lottery.trie.DmgTrieImpl;
 import com.buaa.lottery.trie.TrieImpl;
@@ -40,6 +42,7 @@ public class Compute {
 		JSONObject jo = JSONObject.fromObject(tx);
 		Map<String, String> map = new HashMap<String, String>();
 		String result = "";
+		ComputeClient client = new ComputeClient("localhost", 50052);
 //		log.info("transaction: "+jo.toString());
 		try {
 			map.put("method", jo.getString("method"));
@@ -51,65 +54,32 @@ public class Compute {
 		switch (map.get("method")) {
 		case "Mount": {
 			result = "";
-			// transaction_data
-			jo = JSONObject.fromObject(map.get("parameter"));
-			// environment
-			// execute the code
-			byte[] bt = Utils.hexStringToBytes(jo.getString("project_code"));
-			int count = bt.length;
-			
 			try {
-				
-				Class clazz=cl.load(bt, "com.buaa.lottery.vm.Project");
-				//接口预加载 
-				//Compute.class.getClassLoader().loadClass("com.buaa.lottery.datasource.KeyValueDataSource");
-				Constructor<?> cs[] = clazz.getConstructors();
-				String _env = jo.toString();
-				String trans = jo.toString();
-				Object o = cs[0].newInstance(trie,_env,trans);
-				result = (String) clazz.getMethod("initialize", null).invoke(o, null);
+				result = client.compute(tx);
 
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			} finally {
+				try {
+					client.shutdown();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
-//			if (result != "") {
-//				log.info("execute transaction " + map.get("method"));
-//			    log.info(result);
-//
-//			}
 			return result;
 		}
 		case "Purchase": {
 			result = "";
-			// transaction_data
-			jo = JSONObject.fromObject(map.get("parameter"));
-			// environment
-			String projectID = jo.getString("contractID").substring(0, 16) + "0000000000000000";
-			String rlpdata = DmgTrieImpl.get32(trie, projectID, "storage");
-			if (rlpdata.equals("")) {
-				log.error("null project");
-				break;
-			}
-			JSONObject ja = JSONObject.fromObject(rlpdata);
-			// execute the code
-			byte[] bt = Utils.hexStringToBytes(ja.getString("project_code"));
-			int count = bt.length;
 			try {
-			
-				Class clazz=cl.load(bt, "com.buaa.lottery.vm.Project");
-				Constructor<?> cs[] = clazz.getConstructors();
-				Object o = cs[0].newInstance(trie, ja.toString(), jo.toString());
-				result = (String) clazz.getMethod("purchase", null).invoke(o, null);
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				result = client.compute(tx);
+
+			} finally {
+				try {
+					client.shutdown();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
-//			if (result != "") {
-//				log.info("execute transaction " + map.get("method"));
-//				log.info(result);
-//
-//			}
 			return result;
 		}
 		case "Payback": {
@@ -229,6 +199,5 @@ public class Compute {
 			result = "wrong method name";
 			return result;
 		}
-		return result;
 	}
 }
