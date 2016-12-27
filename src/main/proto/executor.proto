@@ -26,6 +26,7 @@ message StateReply {
   string state_root = 1;
   int32 state_height = 2;
   int32 state_tx = 3;
+  int32 state_latest = 4;
 }
 
 // The request message containing state_root, state_height, state_tx
