@@ -88,7 +88,7 @@ public class Compute {
 
 			result = "";
 			// transaction_data
-			jo = JSONObject.fromObject(map.get("parameter"));
+			// jo = JSONObject.fromObject(map.get("parameter"));
 			CollectFullSetOfLeafNode o = new CollectFullSetOfLeafNode();
 			trie.scanLeaf(trie.getRootHash(), o);
 			List<Values> nodes = o.getCollectedNodes();
@@ -118,25 +118,23 @@ public class Compute {
 					if (obj.containsKey("projectID")) {
 						String sss = obj.getString("projectID");
 						lists.add(sss);
-						String rlpdata = DmgTrieImpl.get32(trie, sss, "storage");
-						if (rlpdata.equals("")) {
-							log.error("null project");
-							break;
-						}
-						JSONObject ja = JSONObject.fromObject(rlpdata);
-						// execute the code
-						byte[] bt = Utils.hexStringToBytes(ja.getString("project_code"));
-						int count = bt.length;
+						JSONObject ja = JSONObject.fromObject(jo.get("parameter"));
+						ja.put("projectID", sss);
+						jo.put("parameter", ja.toString());
+						tx = jo.toString();
+						ComputeClient client = new ComputeClient("localhost", 50052);
 						try {
-							Class clazz=cl.load(bt, "com.buaa.lottery.vm.Project");
-							Constructor<?> cs[] = clazz.getConstructors();
-							Object oj = cs[0].newInstance(trie, ja.toString(), jo.toString());
-							result = (String) clazz.getMethod("payback", null).invoke(oj, null);
+							result = client.compute(tx);
 
-						} catch (Exception e) {
-							// TODO Auto-generated catch block
-							// e.printStackTrace();
+						} finally {
+							try {
+								client.shutdown();
+							} catch (InterruptedException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
 						}
+						
 						if (result != "") {
 							log.info("execute transaction " + map.get("method"));
 							log.info(result);
@@ -149,10 +147,6 @@ public class Compute {
 				}
 			}
 
-//			for (int x = 0; x < lists.size(); x++) {
-//				log.info("project list ==========" + lists.get(x));
-//			}
-//			break;
 			result = "pay back";
 			return result;
 		}
