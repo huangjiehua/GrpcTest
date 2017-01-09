@@ -304,13 +304,13 @@ public class ExecutorServer {
 			responseObserver.onNext(TrieReply.newBuilder().setReply("").build());
 			responseObserver.onCompleted();
 		}
-		
+
 		public void updatesubtrie(UpdateSubTrieRequest request,
 				io.grpc.stub.StreamObserver<com.buaa.lottery.executor.TrieReply> responseObserver) {
 			byte[] root = levelDb.get(Utils.hexStringToBytes(state_root));
 			Values val = Values.fromRlpEncoded(root);
 			TrieImpl trie = new TrieImpl(levelDb, val.asObj());
-			val = Values.fromRlpEncoded(Utils.hexStringToBytes(request.getRoot());
+			val = Values.fromRlpEncoded(Utils.hexStringToBytes(request.getRoot()));
 			TrieImpl newtrie = new TrieImpl(levelDb, val.asObj());
 			newtrie.setCache(trie.getCache());
 			newtrie.update(request.getSubtriekey(), request.getValue());
@@ -319,13 +319,13 @@ public class ExecutorServer {
 			responseObserver.onNext(TrieReply.newBuilder().setReply("").build());
 			responseObserver.onCompleted();
 		}
-		
-	    public void querytrienode(QueryTrieNodeRequest request, StreamObserver<NodeReply> responseObserver) {
+
+		public void querytrienode(QueryTrieNodeRequest request, StreamObserver<NodeReply> responseObserver) {
 
 			byte[] root = levelDb.get(Utils.hexStringToBytes(state_root));
 			Values val = Values.fromRlpEncoded(root);
 			TrieImpl trie = new TrieImpl(levelDb, val.asObj());
-	    	val = Values.fromRlpEncoded(Utils.hexStringToBytes(request.getRoot()));
+			val = Values.fromRlpEncoded(Utils.hexStringToBytes(request.getRoot()));
 			TrieImpl newtrie = new TrieImpl(levelDb, val.asObj());
 			newtrie.setCache(trie.getCache());
 			CollectFullSetOfLeafNode o = new CollectFullSetOfLeafNode();
@@ -350,6 +350,7 @@ public class ExecutorServer {
 				responseObserver.onNext(NodeReply.newBuilder().setNode(result.toString()).build());
 			}
 
+		}
 	}
 
 	private static String storeName(int blocknumber) {
@@ -460,5 +461,4 @@ public class ExecutorServer {
 		// TODO Auto-generated method stub
 
 	}
-
 }

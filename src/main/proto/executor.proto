@@ -67,7 +67,7 @@ message UpdateTrieRequest {
 message UpdateSubTrieRequest {
   string root = 1;
   string triekey = 2;
-  string subtriekey = 3
+  string subtriekey = 3;
   string value = 4;
 }
 

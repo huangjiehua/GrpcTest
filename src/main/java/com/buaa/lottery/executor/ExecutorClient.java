@@ -194,8 +194,8 @@ public class ExecutorClient {
 
 	public Iterator<NodeReply> querytrienode(String root) {
 
-	    QueryTrieNodeRequest request = QueryTrieNodeRequest.newBuilder().setRoot(root);
-	        Iterator<NodeReply> nodelist;
+	    QueryTrieNodeRequest request = QueryTrieNodeRequest.newBuilder().setRoot(root).build();
+	        Iterator<NodeReply> nodelist = null;
 	        try {
 	          nodelist = blockingStub.querytrienode(request);
 	        } catch (StatusRuntimeException e) {
