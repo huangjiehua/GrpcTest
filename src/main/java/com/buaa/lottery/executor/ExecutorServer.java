@@ -1,10 +1,13 @@
 package com.buaa.lottery.executor;
 
 import static io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 
 import java.io.IOException;
 import java.net.URL;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -19,7 +22,10 @@ import com.buaa.lottery.datasource.LevelDbDataSource;
 import com.buaa.lottery.executor.ExecutorServer;
 import com.buaa.lottery.routeguide.Feature;
 import com.buaa.lottery.routeguide.Point;
+import com.buaa.lottery.routeguide.Rectangle;
+import com.buaa.lottery.routeguide.RouteGuideUtil;
 import com.buaa.lottery.transaction.Compute;
+import com.buaa.lottery.trie.CollectFullSetOfLeafNode;
 import com.buaa.lottery.trie.DmgTrieImpl;
 import com.buaa.lottery.trie.TrieImpl;
 import com.buaa.lottery.util.Utils;
@@ -119,13 +125,13 @@ public class ExecutorServer {
 				state_tx = -1;
 				String result_name = result(state_height, state_tx);
 				levelDb.put(result_name.getBytes(), state_root.getBytes());
-			} else{
+			} else {
 				String result_name = result(state_height, state_tx);
 				levelDb.put(result_name.getBytes(), state_root.getBytes());
 			}
 			server.shutdown();
 		}
-		
+
 	}
 
 	/**
@@ -140,7 +146,7 @@ public class ExecutorServer {
 			levelDb.put("state_latest".getBytes(), String.valueOf(state_latest).getBytes());
 			logger.info("state_root:" + state_root + " state_height:" + String.valueOf(state_height) + " state_tx:"
 					+ String.valueOf(state_tx) + " state_latest:" + String.valueOf(state_latest));
-			
+
 			String str = new String(levelDb.get(storeName(state_height).getBytes()));
 			JSONObject jo = JSONObject.parseObject(str);
 			int size = Integer.parseInt(jo.getString("nums"));
@@ -149,14 +155,14 @@ public class ExecutorServer {
 				state_tx = -1;
 				String result_name = result(state_height, state_tx);
 				levelDb.put(result_name.getBytes(), state_root.getBytes());
-			} else{
+			} else {
 				String result_name = result(state_height, state_tx);
 				levelDb.put(result_name.getBytes(), state_root.getBytes());
 			}
 			levelDb.close();
 			server.awaitTermination();
 		}
-		
+
 	}
 
 	/**
@@ -213,8 +219,8 @@ public class ExecutorServer {
 		}
 
 		private StateReply querystate(QueryRequest request) {
-			return StateReply.newBuilder().setStateRoot(state_root).setStateHeight(state_height).setStateTx(state_tx).setStateLatest(state_latest)
-					.build();
+			return StateReply.newBuilder().setStateRoot(state_root).setStateHeight(state_height).setStateTx(state_tx)
+					.setStateLatest(state_latest).build();
 		}
 
 		/**
@@ -277,20 +283,72 @@ public class ExecutorServer {
 			byte[] root = levelDb.get(Utils.hexStringToBytes(state_root));
 			Values val = Values.fromRlpEncoded(root);
 			TrieImpl trie = new TrieImpl(levelDb, val.asObj());
-			String rlpdata = DmgTrieImpl.get32(trie, request.getTriekey(), request.getFieldkey());
+			String rlpdata;
+			if (request.getFieldkey().equals(""))
+				rlpdata = DmgTrieImpl.get32(trie, request.getTriekey());
+			else
+				rlpdata = DmgTrieImpl.get32(trie, request.getTriekey(), request.getFieldkey());
 			responseObserver.onNext(TrieReply.newBuilder().setReply(rlpdata).build());
 			responseObserver.onCompleted();
 		}
-		
+
 		public void updatetrie(UpdateTrieRequest request,
 				io.grpc.stub.StreamObserver<com.buaa.lottery.executor.TrieReply> responseObserver) {
 			byte[] root = levelDb.get(Utils.hexStringToBytes(state_root));
 			Values val = Values.fromRlpEncoded(root);
 			TrieImpl trie = new TrieImpl(levelDb, val.asObj());
-			DmgTrieImpl.update32(trie, request.getTriekey(), request.getFieldkey(), request.getValue());
+			if (request.getFieldkey().equals(""))
+				DmgTrieImpl.update32(trie, request.getTriekey(), request.getValue());
+			else
+				DmgTrieImpl.update32(trie, request.getTriekey(), request.getFieldkey(), request.getValue());
 			responseObserver.onNext(TrieReply.newBuilder().setReply("").build());
 			responseObserver.onCompleted();
 		}
+		
+		public void updatesubtrie(UpdateSubTrieRequest request,
+				io.grpc.stub.StreamObserver<com.buaa.lottery.executor.TrieReply> responseObserver) {
+			byte[] root = levelDb.get(Utils.hexStringToBytes(state_root));
+			Values val = Values.fromRlpEncoded(root);
+			TrieImpl trie = new TrieImpl(levelDb, val.asObj());
+			val = Values.fromRlpEncoded(Utils.hexStringToBytes(request.getRoot());
+			TrieImpl newtrie = new TrieImpl(levelDb, val.asObj());
+			newtrie.setCache(trie.getCache());
+			newtrie.update(request.getSubtriekey(), request.getValue());
+			val = new Values(newtrie.getRoot());
+			DmgTrieImpl.update32(trie, request.getTriekey(), "root", Utils.bytesToHexString(val.encode()));
+			responseObserver.onNext(TrieReply.newBuilder().setReply("").build());
+			responseObserver.onCompleted();
+		}
+		
+	    public void querytrienode(QueryTrieNodeRequest request, StreamObserver<NodeReply> responseObserver) {
+
+			byte[] root = levelDb.get(Utils.hexStringToBytes(state_root));
+			Values val = Values.fromRlpEncoded(root);
+			TrieImpl trie = new TrieImpl(levelDb, val.asObj());
+	    	val = Values.fromRlpEncoded(Utils.hexStringToBytes(request.getRoot()));
+			TrieImpl newtrie = new TrieImpl(levelDb, val.asObj());
+			newtrie.setCache(trie.getCache());
+			CollectFullSetOfLeafNode o = new CollectFullSetOfLeafNode();
+			newtrie.scanLeaf(newtrie.getRootHash(), o);
+			// trie.scanLeaf(trie.getRootHash(), o);
+			List<Values> nodes = o.getCollectedNodes();
+			Iterator<Values> it = nodes.iterator();
+
+			Values result;
+			List<String> lists;
+			String re = "";
+			while (it.hasNext()) {
+
+				Values v = (Values) it.next();
+				List<Object> list = v.asList();
+				if (list.size() == 2) {
+					result = new Values(list.get(1));
+				} else {
+					result = new Values(list.get(16));
+
+				}
+				responseObserver.onNext(NodeReply.newBuilder().setNode(result.toString()).build());
+			}
 
 	}
 
@@ -331,15 +389,15 @@ public class ExecutorServer {
 								jo = JSONObject.parseObject(re);
 								state_root = jo.getString("root");
 								state_tx = state_tx + 1;
-								
+
 								if (state_tx == txs.size() - 1) {
-									//当运行到最后一个交易的时候，则存储为height=height+1,state_tx=-1
+									// 当运行到最后一个交易的时候，则存储为height=height+1,state_tx=-1
 									state_height = state_height + 1;
 									state_tx = -1;
 									result_name = result(state_height, state_tx);
 									levelDb.put(result_name.getBytes(), re.getBytes());
 									break;
-								} else{
+								} else {
 									result_name = result(state_height, state_tx);
 									levelDb.put(result_name.getBytes(), re.getBytes());
 								}
@@ -369,13 +427,13 @@ public class ExecutorServer {
 			value = levelDb.get(storeName(state_height).getBytes());
 			str = new String(value);
 			jo = JSONObject.parseObject(str);
-			size =jo.getInteger("nums");
+			size = jo.getInteger("nums");
 			if (state_tx == size - 1) {
 				state_height = state_height + 1;
 				state_tx = -1;
 				result_name = result(state_height, state_tx);
 				levelDb.put(result_name.getBytes(), re.getBytes());
-			} else{
+			} else {
 				result_name = result(state_height, state_tx);
 				levelDb.put(result_name.getBytes(), re.getBytes());
 			}
@@ -391,8 +449,8 @@ public class ExecutorServer {
 		Values val = Values.fromRlpEncoded(root);
 		TrieImpl trie = new TrieImpl(levelDb, val.asObj());
 		String result = Compute.execute(trie, transaction.getData());
-		System.out.println("method: "+ transaction.getData());
-		System.out.println("result: "+ result);
+		System.out.println("method: " + transaction.getData());
+		System.out.println("result: " + result);
 		String new_root = Utils.bytesToHexString(trie.getRootHash());
 		JSONObject jo = new JSONObject();
 		jo.put("root", new_root);

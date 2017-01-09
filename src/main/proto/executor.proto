@@ -15,6 +15,8 @@ service Executor {
   rpc newblock(BlockRequest) returns (BooleanReply){}
   rpc querytrie(QueryTrieRequest) returns (TrieReply) {}
   rpc updatetrie(UpdateTrieRequest) returns (TrieReply) {}
+  rpc updatesubtrie(UpdateSubTrieRequest) returns (TrieReply) {}
+  rpc querytrienode(QueryTrieNodeRequest) returns (stream NodeReply) {}
 }
 
 // The request message containing nothing.
@@ -60,4 +62,19 @@ message UpdateTrieRequest {
   string triekey = 1;
   string fieldkey = 2;
   string value = 3;
+}
+
+message UpdateSubTrieRequest {
+  string root = 1;
+  string triekey = 2;
+  string subtriekey = 3
+  string value = 4;
+}
+
+message QueryTrieNodeRequest {
+  string root = 1;
+}
+
+message NodeReply {
+  string node = 1;
 }

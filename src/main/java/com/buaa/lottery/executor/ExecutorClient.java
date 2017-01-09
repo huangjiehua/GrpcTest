@@ -5,6 +5,7 @@ import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -13,6 +14,8 @@ import java.util.logging.Logger;
 import net.sf.json.*;
 
 import com.buaa.lottery.executor.ExecutorGrpc;
+import com.buaa.lottery.routeguide.Feature;
+import com.buaa.lottery.routeguide.Rectangle;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.Message;
 import com.buaa.lottery.bean.Block;
@@ -167,7 +170,43 @@ public class ExecutorClient {
 		return triereply.getReply();
 
 	}
+	
+	public String updatesubtrie(String root, String triekey, String subtriekey, String value) {
 
+		UpdateSubTrieRequest request = UpdateSubTrieRequest.newBuilder().setRoot(root).setTriekey(triekey).setSubtriekey(subtriekey).setValue(value).build();
+		TrieReply triereply = null;
+		try {
+			triereply = blockingStub.updatesubtrie(request);
+
+			if (testHelper != null) {
+				testHelper.onMessage(request);
+			}
+		} catch (StatusRuntimeException e) {
+			warning("RPC failed: {0}", e.getStatus());
+			if (testHelper != null) {
+				testHelper.onRpcError(e);
+			}
+			return "";
+		}
+		return triereply.getReply();
+
+	}
+
+	public Iterator<NodeReply> querytrienode(String root) {
+
+	    QueryTrieNodeRequest request = QueryTrieNodeRequest.newBuilder().setRoot(root);
+	        Iterator<NodeReply> nodelist;
+	        try {
+	          nodelist = blockingStub.querytrienode(request);
+	        } catch (StatusRuntimeException e) {
+	          warning("RPC failed: {0}", e.getStatus());
+	          if (testHelper != null) {
+	            testHelper.onRpcError(e);
+	          }
+	        }
+	        return nodelist;
+
+	}
 	/** Issues several different requests and then exits. */
 	public static void main(String[] args) throws InterruptedException {
 
