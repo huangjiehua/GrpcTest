@@ -53,7 +53,7 @@ public class Compute {
 		}
 		switch (map.get("method")) {
 		case "Mount": {
-			result = "";
+			result = "no mount";
 			ComputeClient client = new ComputeClient("localhost", 50052);
 			try {
 				result = client.compute(tx);
@@ -69,7 +69,7 @@ public class Compute {
 			return result;
 		}
 		case "Purchase": {
-			result = "";
+			result = "no purchase";
 			ComputeClient client = new ComputeClient("localhost", 50052);
 			try {
 				result = client.compute(tx);
@@ -86,7 +86,7 @@ public class Compute {
 		}
 		case "Payback": {
 
-			result = "";
+			result = "no payback";
 			// transaction_data
 			// jo = JSONObject.fromObject(map.get("parameter"));
 			CollectFullSetOfLeafNode o = new CollectFullSetOfLeafNode();

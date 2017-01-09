@@ -14,6 +14,7 @@ service Executor {
   rpc verify(VerifyRequest) returns (BooleanReply){}
   rpc newblock(BlockRequest) returns (BooleanReply){}
   rpc querytrie(QueryTrieRequest) returns (TrieReply) {}
+  rpc updatetrie(UpdateTrieRequest) returns (TrieReply) {}
 }
 
 // The request message containing nothing.
@@ -55,3 +56,8 @@ message TrieReply {
   string reply = 1;
 }
 
+message UpdateTrieRequest {
+  string triekey = 1;
+  string fieldkey = 2;
+  string value = 3;
+}

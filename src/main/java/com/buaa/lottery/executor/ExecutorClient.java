@@ -146,6 +146,27 @@ public class ExecutorClient {
 		return triereply.getReply();
 
 	}
+	
+	public String updatetrie(String triekey, String fieldkey, String value) {
+
+		UpdateTrieRequest request = UpdateTrieRequest.newBuilder().setTriekey(triekey).setFieldkey(fieldkey).setValue(value).build();
+		TrieReply triereply = null;
+		try {
+			triereply = blockingStub.updatetrie(request);
+
+			if (testHelper != null) {
+				testHelper.onMessage(request);
+			}
+		} catch (StatusRuntimeException e) {
+			warning("RPC failed: {0}", e.getStatus());
+			if (testHelper != null) {
+				testHelper.onRpcError(e);
+			}
+			return "";
+		}
+		return triereply.getReply();
+
+	}
 
 	/** Issues several different requests and then exits. */
 	public static void main(String[] args) throws InterruptedException {

@@ -281,6 +281,16 @@ public class ExecutorServer {
 			responseObserver.onNext(TrieReply.newBuilder().setReply(rlpdata).build());
 			responseObserver.onCompleted();
 		}
+		
+		public void updatetrie(UpdateTrieRequest request,
+				io.grpc.stub.StreamObserver<com.buaa.lottery.executor.TrieReply> responseObserver) {
+			byte[] root = levelDb.get(Utils.hexStringToBytes(state_root));
+			Values val = Values.fromRlpEncoded(root);
+			TrieImpl trie = new TrieImpl(levelDb, val.asObj());
+			DmgTrieImpl.update32(trie, request.getTriekey(), request.getFieldkey(), request.getValue());
+			responseObserver.onNext(TrieReply.newBuilder().setReply("").build());
+			responseObserver.onCompleted();
+		}
 
 	}
 
