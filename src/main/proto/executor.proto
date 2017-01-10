@@ -17,6 +17,8 @@ service Executor {
   rpc updatetrie(UpdateTrieRequest) returns (TrieReply) {}
   rpc updatesubtrie(UpdateSubTrieRequest) returns (TrieReply) {}
   rpc querytrienode(QueryTrieNodeRequest) returns (stream NodeReply) {}
+  rpc querysync(QuerySyncRequest) returns (SyncReply) {}
+  rpc updatesync(UpdateSyncRequest) returns (BooleanReply) {}
 }
 
 // The request message containing nothing.
@@ -78,3 +80,17 @@ message QueryTrieNodeRequest {
 message NodeReply {
   string node = 1;
 }
+
+message QuerySyncRequest {
+  int32 state_height = 1;
+  int32 state_tx = 2;
+}
+
+message UpdateSyncRequest {
+  string syncstr = 1;
+}
+
+message SyncReply {
+  string syncreply = 1;
+}
+  

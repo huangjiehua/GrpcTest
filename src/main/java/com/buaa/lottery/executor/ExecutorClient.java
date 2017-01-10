@@ -207,6 +207,48 @@ public class ExecutorClient {
 	        return nodelist;
 
 	}
+	
+	public String querysync(int state_height, int state_tx) {
+
+		QuerySyncRequest request = QuerySyncRequest.newBuilder().setStateHeight(state_height).setStateTx(state_tx).build();
+		SyncReply syncreply = null;
+		try {
+			syncreply = blockingStub.querysync(request);
+
+			if (testHelper != null) {
+				testHelper.onMessage(request);
+			}
+		} catch (StatusRuntimeException e) {
+			warning("RPC failed: {0}", e.getStatus());
+			if (testHelper != null) {
+				testHelper.onRpcError(e);
+			}
+			return "";
+		}
+		return syncreply.getSyncreply();
+
+	}
+	
+	public boolean updatesync(String syncstr) {
+
+		UpdateSyncRequest request = UpdateSyncRequest.newBuilder().setSyncstr(syncstr).build();
+		BooleanReply booleanreply = null;
+		try {
+			booleanreply = blockingStub.updatesync(request);
+
+			if (testHelper != null) {
+				testHelper.onMessage(request);
+			}
+		} catch (StatusRuntimeException e) {
+			warning("RPC failed: {0}", e.getStatus());
+			if (testHelper != null) {
+				testHelper.onRpcError(e);
+			}
+			return false;
+		}
+		return booleanreply.getResult();
+
+	}
 	/** Issues several different requests and then exits. */
 	public static void main(String[] args) throws InterruptedException {
 
